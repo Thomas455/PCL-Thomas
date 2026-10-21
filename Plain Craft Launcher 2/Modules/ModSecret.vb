@@ -275,7 +275,19 @@ Friend Module ModSecret
     Private Function GetLatestRelease() As JObject
         Dim Repo As String = If(UpdateRepo, "").Trim().Trim("/"c)
         If Repo = "" Then Throw New Exception("尚未配置更新仓库，请在【设置 → 启动器 → 凭据与更新源】中填写 ""用户名/仓库名""")
-        Return NetRequestByClientRetry($"https://api.github.com/repos/{Repo}/releases/latest", RequireJson:=True).DeserializeJson()
+        Try
+            Return NetRequestByClientRetry($"https://api.github.com/repos/{Repo}/releases/latest", RequireJson:=True).DeserializeJson()
+        Catch ex As HttpRequestCodeException
+            '把常见的 HTTP 错误翻译成能看懂的话
+            Select Case ex.StatusCode
+                Case HttpStatusCode.NotFound
+                    Throw New Exception($"更新源 {Repo} 还没有发布任何 Release，或者该仓库是私有的（检查更新需要公开仓库）。")
+                Case HttpStatusCode.Forbidden, CType(429, HttpStatusCode)
+                    Throw New Exception("GitHub 接口访问次数超限（匿名每小时 60 次），请稍后再试。")
+                Case Else
+                    Throw
+            End Select
+        End Try
     End Function
 
     ''' <summary>
