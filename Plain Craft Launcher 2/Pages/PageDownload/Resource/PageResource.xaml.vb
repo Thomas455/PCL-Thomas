@@ -128,6 +128,15 @@ Public Class PageResource
             .Tag = ComboSearchTag.SelectedItem.Tag
             .ModLoaders = If(PageType = ResourceTypes.Mod, Val(ComboSearchLoader.SelectedItem.Tag), ModLoaders.None)
             .Sources = CType(Val(ComboSearchSource.SelectedItem.Tag), ResourcePlatforms)
+            '未配置 CurseForge API Key 时自动降级，只搜索 Modrinth，避免请求 403
+            If String.IsNullOrWhiteSpace(CurseForgeAPIKey) Then
+                .Sources = .Sources And Not ResourcePlatforms.CurseForge
+                If (.Sources And ResourcePlatforms.Any) = 0 Then .Sources = ResourcePlatforms.Modrinth
+                If Not CurseForgeHintShown Then
+                    CurseForgeHintShown = True
+                    Hint("尚未配置 CurseForge API Key，已仅使用 Modrinth 源。可在【设置 → 启动器 → 凭据与更新源】中填写。", HintType.Blue, False)
+                End If
+            End If
         End With
         Return Request
     End Function
@@ -135,6 +144,10 @@ Public Class PageResource
 #End Region
 
     Public Storage As New ResourceSearcher.SearchResult
+    ''' <summary>
+    ''' 是否已经提示过“未配置 CurseForge API Key”。
+    ''' </summary>
+    Private Shared CurseForgeHintShown As Boolean = False
     ''' <summary>
     ''' 每页展示的结果数量。
     ''' </summary>

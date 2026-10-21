@@ -342,3 +342,7 @@ ASALocalRun/
 healthchecksdb
 
 MaskFiles/
+
+# 本地凭据与密钥，绝不提交
+**/PCL/Secret.ini
+Secret.ini
