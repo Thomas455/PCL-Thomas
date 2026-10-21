@@ -15,7 +15,10 @@ Friend Module ModSecret
 
 #Region "网络鉴权"
 
-    Public Const RestrictMcDownload As Boolean = True
+    '是否禁用 MC 下载功能（同时影响：下载页安装游戏、整合包安装、实例修改中的 MC 版本切换、
+    'ModPack 详情页的安装按钮、拖入整合包时的处理）。
+    '本分支解除该限制，恢复正常下载链路（下载源仍为 BMCLAPI / Mojang 官方，未做任何改动）。
+    Public Const RestrictMcDownload As Boolean = False
     Friend Function SecretCdnSign(UrlWithMark As String) As String
         If Not UrlWithMark.EndsWithF("{CDN}") Then Return UrlWithMark
         Return UrlWithMark.Replace("{CDN}", "").Replace(" ", "%20")
