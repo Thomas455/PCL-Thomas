@@ -6,12 +6,75 @@ Friend Module ModSecret
     Public Const VersionBranchMain As String = "OpenSource"
     '在开源版的注册表与常规版的注册表隔离，以防数据冲突
     Public Const RegFolder As String = "PCLDebug"
-    '用于微软登录的 ClientId
-    Public OAuthClientId As String = If(Environment.GetEnvironmentVariable("PCL_MS_CLIENT_ID"), "")
-    'CurseForge API Key
-    Public CurseForgeAPIKey As String = If(Environment.GetEnvironmentVariable("PCL_CURSEFORGE_API_KEY"), "")
+    '用于微软登录的 ClientId（由 RefreshSecret 从环境变量或本地凭据文件读取）
+    Public OAuthClientId As String = ""
+    'CurseForge API Key（由 RefreshSecret 从环境变量或本地凭据文件读取）
+    Public CurseForgeAPIKey As String = ""
     '用于匿名数据收集的腾讯云日志服务上报 URL，形如 https://{region}.cls.tencentcs.com/track?topic_id={topic_id}
     Public Const ClsBaseUrl As String = ""
+
+#Region "本地凭据"
+
+    ''' <summary>
+    ''' 本地凭据文件路径：PCL\Secret.ini。
+    ''' 这里只存放使用者自己的密钥，仅存在于本机，已在 .gitignore 中排除，不要提交到版本库。
+    ''' 仓库中提供 Secret.ini.example 作为模板。
+    ''' </summary>
+    Friend ReadOnly Property SecretFile As String
+        Get
+            Return Paths.Base & "PCL\Secret.ini"
+        End Get
+    End Property
+
+    ''' <summary>
+    ''' 检查更新所用的 GitHub 仓库，格式为 “用户名/仓库名”。
+    ''' </summary>
+    Public UpdateRepo As String = "Meloong-Git/PCL"
+
+    ''' <summary>
+    ''' 从环境变量与本地凭据文件重新加载全部密钥与配置。
+    ''' 优先级：环境变量 &gt; PCL\Secret.ini &gt; 内置默认值。
+    ''' </summary>
+    Friend Sub RefreshSecret()
+        Try
+            Dim MsId As String = Environment.GetEnvironmentVariable("PCL_MS_CLIENT_ID")
+            If String.IsNullOrWhiteSpace(MsId) Then MsId = ReadIni(SecretFile, "MsClientId", "")
+            OAuthClientId = NormalizeSecret(MsId)
+
+            Dim CfKey As String = Environment.GetEnvironmentVariable("PCL_CURSEFORGE_API_KEY")
+            If String.IsNullOrWhiteSpace(CfKey) Then CfKey = ReadIni(SecretFile, "CurseForgeAPIKey", "")
+            CurseForgeAPIKey = NormalizeSecret(CfKey)
+
+            Dim Repo As String = NormalizeSecret(ReadIni(SecretFile, "UpdateRepo", ""))
+            UpdateRepo = If(Repo = "", "Meloong-Git/PCL", Repo)
+        Catch ex As Exception
+            Logger.Warn(ex, "读取本地凭据失败")
+        End Try
+    End Sub
+
+    ''' <summary>
+    ''' 把凭据写入本地凭据文件（不写注册表，不进版本库），并立即生效。
+    ''' </summary>
+    Friend Sub SaveSecret(MsClientId As String, CurseForgeKey As String, Repo As String)
+        Try
+            Dim Folder As String = Paths.Base & "PCL\"
+            If Not IO.Directory.Exists(Folder) Then IO.Directory.CreateDirectory(Folder)
+            WriteIni(SecretFile, "MsClientId", If(MsClientId, "").Trim())
+            WriteIni(SecretFile, "CurseForgeAPIKey", If(CurseForgeKey, "").Trim())
+            WriteIni(SecretFile, "UpdateRepo", If(Repo, "").Trim())
+        Finally
+            RefreshSecret()
+        End Try
+    End Sub
+
+    ''' <summary>
+    ''' 去掉复制粘贴时容易带上的空格、引号与换行。
+    ''' </summary>
+    Private Function NormalizeSecret(Value As String) As String
+        Return If(Value, "").Replace(vbCr, "").Replace(vbLf, "").Trim().Trim(""""c).Trim("'"c).Trim()
+    End Function
+
+#End Region
 
 #Region "网络鉴权"
 
@@ -72,6 +135,43 @@ Friend Module ModSecret
         Try
             If ThemeNow = NewTheme AndAlso NewTheme >= 0 Then Return
             If NewTheme >= 0 Then ThemeNow = NewTheme
+
+            '先取自定义主题的滑块值，再按主题 ID 套用预设配色
+            ColorHue = Settings.Get(Of Integer)("UiLauncherHue")
+            ColorSat = Settings.Get(Of Integer)("UiLauncherSat")
+            ColorHueTopbarDelta = Settings.Get(Of Integer)("UiLauncherDelta")
+            ColorLightAdjust = Settings.Get(Of Integer)("UiLauncherLight")
+            Select Case If(ThemeNow >= 0, ThemeNow, Settings.Get(Of Integer)("UiLauncherTheme"))
+                Case 0 '龙猫蓝
+                    ColorHue = 210 : ColorSat = 85 : ColorHueTopbarDelta = 0 : ColorLightAdjust = 0
+                Case 1 '甜柠青
+                    ColorHue = 174 : ColorSat = 72 : ColorHueTopbarDelta = 0 : ColorLightAdjust = 0
+                Case 2 '小草绿
+                    ColorHue = 110 : ColorSat = 62 : ColorHueTopbarDelta = 0 : ColorLightAdjust = 0
+                Case 3 '菠萝黄
+                    ColorHue = 45 : ColorSat = 85 : ColorHueTopbarDelta = 0 : ColorLightAdjust = 0
+                Case 4 '橡木棕
+                    ColorHue = 25 : ColorSat = 45 : ColorHueTopbarDelta = 0 : ColorLightAdjust = 0
+                Case 5 '玄素黑
+                    ColorHue = 210 : ColorSat = 0 : ColorHueTopbarDelta = 0 : ColorLightAdjust = -12
+                Case 6 '铁杆粉
+                    ColorHue = 330 : ColorSat = 70 : ColorHueTopbarDelta = 0 : ColorLightAdjust = 0
+                Case 7 '神秘紫
+                    ColorHue = 265 : ColorSat = 60 : ColorHueTopbarDelta = 0 : ColorLightAdjust = 0
+                Case 8 '秋仪金
+                    ColorHue = 35 : ColorSat = 78 : ColorHueTopbarDelta = 0 : ColorLightAdjust = 0
+                Case 9 '活跃橙
+                    ColorHue = 20 : ColorSat = 85 : ColorHueTopbarDelta = 0 : ColorLightAdjust = 0
+                Case 10 '跳票红
+                    ColorHue = 355 : ColorSat = 75 : ColorHueTopbarDelta = 0 : ColorLightAdjust = 0
+                Case 11 '极客蓝
+                    ColorHue = 195 : ColorSat = 92 : ColorHueTopbarDelta = 0 : ColorLightAdjust = 0
+                Case 12 '滑稽彩
+                    ColorHue = 50 : ColorSat = 100 : ColorHueTopbarDelta = 120 : ColorLightAdjust = 0
+                Case 13 '欧皇彩
+                    ColorHue = 300 : ColorSat = 95 : ColorHueTopbarDelta = 90 : ColorLightAdjust = 0
+                Case 14 '自定义：沿用上面读取的滑块值
+            End Select
 
             Color1 = New MyColor().FromHSL2(ColorHue, ColorSat * 0.2, 25 + ColorLightAdjust * 0.3)
             Color2 = New MyColor().FromHSL2(ColorHue, ColorSat, 45 + ColorLightAdjust)
@@ -135,35 +235,182 @@ Friend Module ModSecret
             FrmMain.PanForm.Background.Freeze()
         End Sub)
     End Sub
+    ''' <summary>
+    ''' 本分支已解除主题的赞助 / 成就解锁限制：全部主题直接可用。
+    ''' EffectSetup 为 True 时才会同步 UI（隐藏灰色占位与解锁提示）。
+    ''' </summary>
     Friend Sub ThemeCheckAll(EffectSetup As Boolean)
+        Try
+            If EffectSetup AndAlso FrmSetupUI IsNot Nothing Then FrmSetupUI.ThemeUnlockAll()
+        Catch ex As Exception
+            Logger.Warn(ex, "解锁主题时出错")
+        End Try
     End Sub
     Friend Function ThemeCheckOne(Id As Integer) As Boolean
         Return True
     End Function
     Friend Function ThemeUnlock(Id As Integer, Optional ShowDoubleHint As Boolean = True, Optional UnlockHint As String = Nothing) As Boolean
-        Return False
+        If ShowDoubleHint AndAlso Not String.IsNullOrEmpty(UnlockHint) Then Hint(UnlockHint, HintType.Green, False)
+        Return True
     End Function
 
 #End Region
 
 #Region "更新"
 
-    Friend Sub UpdateCheckByButton()
-        Hint("该版本中不包含更新功能……")
-    End Sub
+    ''' <summary>
+    ''' 已下载、等待重启后替换当前程序的新版本文件。
+    ''' </summary>
+    Friend ReadOnly Property UpdateNewFile As String
+        Get
+            Return Paths.Base & "PCL\Plain Craft Launcher 2.exe"
+        End Get
+    End Property
 
     Friend IsUpdateWaitingRestart As Boolean = False
-    Public Sub UpdateRestart(TriggerRestartAndByEnd As Boolean)
-    End Sub
-    Public Sub UpdateReplace(ProcessId As Integer, OldFileName As String, NewFileName As String, TriggerRestart As Boolean)
+
+    ''' <summary>
+    ''' 从配置的 GitHub 仓库获取最新 Release。失败时抛出异常。
+    ''' </summary>
+    Private Function GetLatestRelease() As JObject
+        Dim Repo As String = If(UpdateRepo, "").Trim().Trim("/"c)
+        If Repo = "" Then Throw New Exception("尚未配置更新仓库，请在【设置 → 启动器 → 凭据与更新源】中填写 ""用户名/仓库名""")
+        Return NetRequestByClientRetry($"https://api.github.com/repos/{Repo}/releases/latest", RequireJson:=True).DeserializeJson()
+    End Function
+
+    ''' <summary>
+    ''' 从 Release 的附件中挑选可用于自动更新的文件（优先 exe）。没有则返回 Nothing。
+    ''' </summary>
+    Private Function GetReleaseExeUrl(Release As JObject) As String
+        For Each Asset As JToken In If(Release?.Item("assets"), New JArray())
+            Dim Name As String = If(Asset?("name")?.ToString, "")
+            If Name.EndsWithF(".exe") Then Return Asset("browser_download_url")?.ToString
+        Next
+        Return Nothing
+    End Function
+
+    ''' <summary>
+    ''' 检查更新。更新源为本地凭据文件中配置的 GitHub 仓库。
+    ''' </summary>
+    Friend Sub UpdateCheckByButton()
+        Hint("正在检查更新……")
+        RunInNewThread(
+        Sub()
+            Try
+                Dim Release As JObject = GetLatestRelease()
+                Dim Tag As String = If(Release?("tag_name")?.ToString, "").Trim()
+                If Tag = "" Then Throw New Exception("更新源没有返回版本号")
+                Dim NewVersion As Version = Nothing
+                If Not Version.TryParse(Tag.TrimStart("v"c, "V"c), NewVersion) Then Throw New Exception($"无法识别更新源返回的版本号：{Tag}")
+                If NewVersion <= New Version(VersionBaseName) Then
+                    RunInUi(Sub() MyMsgBox($"当前已是最新版本（{VersionBaseName}）。", "检查更新"))
+                    Return
+                End If
+                '整理更新说明
+                Dim BodyText As String = If(Release?("body")?.ToString, "").Trim().Replace(vbCrLf, vbLf).Replace(vbLf, vbCrLf)
+                If BodyText.Length > 800 Then BodyText = BodyText.Substring(0, 800) & vbCrLf & "……"
+                Dim Message As String = $"发现新版本 {Tag}，当前版本 {VersionBaseName}。"
+                If BodyText <> "" Then Message &= vbCrLf & vbCrLf & BodyText
+                Dim ExeUrl As String = GetReleaseExeUrl(Release)
+                Dim PageUrl As String = If(Release?("html_url")?.ToString, "")
+                '询问用户
+                Dim Choice As Integer = 2
+                Dim Waiter As New ManualResetEventSlim(False)
+                RunInUi(
+                Sub()
+                    Choice = If(String.IsNullOrEmpty(ExeUrl),
+                        MyMsgBox(Message & vbCrLf & vbCrLf & "该版本没有提供可直接下载的 exe，是否打开下载页面？", "检查更新", "打开页面", "取消"),
+                        MyMsgBox(Message & vbCrLf & vbCrLf & "是否现在下载并安装？", "检查更新", "下载并安装", "取消"))
+                    Waiter.Set()
+                End Sub)
+                Waiter.Wait()
+                If Choice <> 1 Then Return
+                '没有 exe 附件时改为打开 Release 页面
+                If String.IsNullOrEmpty(ExeUrl) Then
+                    If PageUrl <> "" Then RunInUi(Sub() OpenWebsite(PageUrl))
+                    Return
+                End If
+                '下载新版本
+                Hint("正在下载新版本……")
+                Dim Folder As String = Paths.Base & "PCL\"
+                If Not IO.Directory.Exists(Folder) Then IO.Directory.CreateDirectory(Folder)
+                NetDownloadByClient(ExeUrl, UpdateNewFile, SimulateBrowserHeaders:=True)
+                IsUpdateWaitingRestart = True
+                '询问是否重启
+                Dim Restart As Integer = 2
+                Dim Waiter2 As New ManualResetEventSlim(False)
+                RunInUi(
+                Sub()
+                    Restart = MyMsgBox("新版本已下载完成，重启启动器后生效。是否立即重启？", "更新完成", "立即重启", "稍后重启")
+                    Waiter2.Set()
+                End Sub)
+                Waiter2.Wait()
+                If Restart = 1 Then RunInUi(Sub() FrmMain.EndProgram(False))
+            Catch ex As Exception
+                ex.ThrowIfCanceled()
+                Logger.Error(ex, "检查更新失败", LogBehavior.Toast)
+            End Try
+        End Sub, "UpdateCheck")
     End Sub
 
     ''' <summary>
-    ''' 确保 PathTemp/Latest.exe 是最新正式版的 PCL，它会被用于整合包打包。
-    ''' 如果不是，则下载一个。
+    ''' 启动新版本进程完成文件替换。由程序退出流程调用。
+    ''' </summary>
+    Public Sub UpdateRestart(TriggerRestartAndByEnd As Boolean)
+        Try
+            Dim NewFile As String = UpdateNewFile
+            If Not FileUtils.Exists(NewFile) Then Return
+            '由新版本自身作为更新器：--update <旧进程 PID> "<旧文件>" "<新文件>" <替换后是否重启>
+            Dim Arguments As String = $"--update {Process.GetCurrentProcess().Id} ""{PathExe}"" ""{NewFile}"" True"
+            StartProcess(NewFile, Arguments)
+            Logger.Info($"已启动更新程序：{NewFile} {Arguments}")
+        Catch ex As Exception
+            Logger.Error(ex, "启动更新程序失败", LogBehavior.Toast)
+        End Try
+    End Sub
+
+    ''' <summary>
+    ''' 由新版本进程调用：等待旧版本退出后用 NewFileName 覆盖 OldFileName，并按需重启。
+    ''' </summary>
+    Public Sub UpdateReplace(ProcessId As Integer, OldFileName As String, NewFileName As String, TriggerRestart As Boolean)
+        Try
+            '等待旧版本退出
+            Try
+                Dim OldProcess As Process = Process.GetProcessById(ProcessId)
+                If Not OldProcess.WaitForExit(30000) Then Logger.Warn("等待旧版本退出超时，仍尝试替换文件")
+            Catch ex As ArgumentException
+                '旧进程已经不在了
+            End Try
+            Thread.Sleep(200)
+            '替换文件
+            FileUtils.Copy(NewFileName, OldFileName)
+            Logger.Info($"更新完成：{NewFileName} → {OldFileName}")
+            '清理残留
+            If Not String.Equals(NewFileName, OldFileName, StringComparison.OrdinalIgnoreCase) Then
+                Try
+                    FileUtils.Delete(NewFileName)
+                Catch ex As Exception
+                    Logger.Warn(ex, "清理更新残留文件失败")
+                End Try
+            End If
+            If TriggerRestart Then StartProcess(OldFileName)
+        Catch ex As Exception
+            Logger.Error(ex, "替换更新文件失败")
+        End Try
+    End Sub
+
+    ''' <summary>
+    ''' 确保 PathTemp/Latest.exe 是更新仓库中最新的 PCL，它会被用于整合包打包。
     ''' </summary>
     Friend Sub DownloadLatestPCL(Optional LoaderToSyncProgress As LoaderBase = Nothing)
-        '注意：如果要自行实现这个功能，请换用另一个文件路径，以免与官方版本冲突
+        Try
+            Dim Release As JObject = GetLatestRelease()
+            Dim ExeUrl As String = GetReleaseExeUrl(Release)
+            If String.IsNullOrEmpty(ExeUrl) Then Throw New Exception("更新仓库的最新 Release 中没有提供 exe 附件")
+            NetDownloadByLoader(ExeUrl, PathTemp & "Latest.exe", LoaderToSyncProgress, SimulateBrowserHeaders:=True)
+        Catch ex As Exception
+            Throw New Exception("下载最新的 PCL 正式版失败，请检查【设置 → 启动器 → 凭据与更新源】中的更新仓库配置", ex)
+        End Try
     End Sub
 
 #End Region

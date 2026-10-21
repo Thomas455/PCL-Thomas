@@ -53,9 +53,9 @@ Public Class ResourceSearcher
         ''' </summary>
         Public SearchText As String = Nothing
         ''' <summary>
-        ''' 允许的来源。
+        ''' 允许的来源。未配置 CurseForge API Key 时默认只用 Modrinth，避免请求被拒绝。
         ''' </summary>
-        Public Sources As ResourcePlatforms = ResourcePlatforms.Any
+        Public Sources As ResourcePlatforms = If(String.IsNullOrWhiteSpace(CurseForgeAPIKey), ResourcePlatforms.Modrinth, ResourcePlatforms.Any)
         Public Sub New(Type As ResourceTypes, Storage As SearchResult, TargetResultCount As Integer)
             Me.Type = Type
             Me.Storage = Storage

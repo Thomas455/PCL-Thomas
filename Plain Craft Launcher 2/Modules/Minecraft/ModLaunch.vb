@@ -882,6 +882,14 @@ LoginFinish:
     Private Function MsLoginStep1New(Data As LoaderTask(Of McLoginMs, McLoginResult)) As (OAuthAccessToken As String, OAuthRefreshToken As String)
         '参考：https://learn.microsoft.com/zh-cn/entra/identity-platform/v2-oauth2-device-code
 
+        '未配置 Client ID 时给出明确的指引，而不是让微软返回一堆看不懂的错误
+        If String.IsNullOrWhiteSpace(OAuthClientId) Then
+            Throw New Exception("$尚未配置微软登录的 Client ID。" & vbCrLf &
+                                "请在【设置 → 启动器 → 凭据与更新源】中填入你自己注册的 Azure 应用 Client ID，" & vbCrLf &
+                                "或设置环境变量 PCL_MS_CLIENT_ID。" & vbCrLf &
+                                "若不使用正版登录，可以在添加账号时选择离线登录。")
+        End If
+
         '初始请求
 Retry:
         McLaunchLog("开始微软登录步骤 1/6（原始登录）")

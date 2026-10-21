@@ -23,6 +23,21 @@ Public Class PageSetupSystem
         SliderLoad()
         AniControlEnabled -= 1
 
+        '本地凭据（PCL\Secret.ini）
+        RefreshSecret()
+        TextSecretMsClientId.Text = OAuthClientId
+        TextSecretCurseForge.Text = CurseForgeAPIKey
+        TextSecretUpdateRepo.Text = UpdateRepo
+
+    End Sub
+
+    '保存本地凭据
+    Private Sub BtnSecretSave_Click(sender As Object, e As EventArgs) Handles BtnSecretSave.Click
+        SaveSecret(TextSecretMsClientId.Text, TextSecretCurseForge.Text, TextSecretUpdateRepo.Text)
+        TextSecretMsClientId.Text = OAuthClientId
+        TextSecretCurseForge.Text = CurseForgeAPIKey
+        TextSecretUpdateRepo.Text = UpdateRepo
+        Hint("已保存到 PCL\Secret.ini，不会进入版本库", HintType.Green, False)
     End Sub
     Public Sub Reload()
         SettingService.RefreshSettings(Me)

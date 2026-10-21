@@ -3,6 +3,7 @@ Public Class PageSetupUI
     Private Sub PageSetupUI_Loaded(sender As Object, e As RoutedEventArgs) Handles Me.Loaded
         '重复加载部分
         PanBack.ScrollToHome()
+        ThemeUnlockAll()
         ThemeCheckAll(True)
         If ThemeDontClick <> 0 Then
             Dim NewText As String = Nothing
@@ -28,15 +29,34 @@ Public Class PageSetupUI
 
         SliderLoad()
 
-        If BuildType = BuildTypes.Release Then PanLauncherHide.Visibility = Visibility.Visible
+        End Sub
 
-        '设置解锁
-        If Not RadioLauncherTheme8.IsEnabled Then LabLauncherTheme8Copy.ToolTip = $"累积赞助达到 ¥23.33 后，在爱发电私信发送【土豆 {Identify}】以解锁。" & vbCrLf & "右键打开赞助页面，如果觉得 PCL 做得还不错就支持一下吧 =w=！"
-        RadioLauncherTheme8.ToolTip = $"累积赞助达到 ¥23.33 后，在爱发电私信发送【土豆 {Identify}】以解锁"
-        If Not RadioLauncherTheme9.IsEnabled Then LabLauncherTheme9Copy.ToolTip = "· 反馈一个 Bug，在标记为 [完成] 后回复识别码要求解锁（右键打开反馈页面）" & vbCrLf & "· 提交一个 Pull Request 或主页预设，在标记为 [完成] 后回复识别码要求解锁"
-        RadioLauncherTheme9.ToolTip = "· 反馈一个 Bug，在标记为 [完成] 后回复识别码要求解锁" & vbCrLf & "· 提交一个 Pull Request 或主页预设，在标记为 [完成] 后回复识别码要求解锁"
-        '极客蓝的处理在 ThemeCheck 中
-
+    ''' <summary>
+    ''' 解除全部主题的赞助 / 成就解锁限制，本分支所有主题直接可用。
+    ''' </summary>
+    Public Sub ThemeUnlockAll()
+        Try
+            For Each Control In PanLauncherTheme.Children
+                If TypeOf Control Is MyRadioBox Then
+                    Dim Radio As MyRadioBox = Control
+                    If Radio.Name = "RadioLauncherTheme5Gray" Then
+                        Radio.Visibility = Visibility.Collapsed '玄素黑的灰色占位块
+                    Else
+                        Radio.IsEnabled = True
+                        Radio.Opacity = 1
+                    End If
+                ElseIf TypeOf Control Is TextBlock Then
+                    Dim Lab As TextBlock = Control
+                    '只隐藏 LabLauncherThemeXxx 这类解锁提示，保留“主题 / 隐藏主题”行标题
+                    If Not String.IsNullOrEmpty(Lab.Name) AndAlso Lab.Name.StartsWithF("LabLauncherTheme") Then
+                        Lab.Visibility = Visibility.Collapsed
+                    End If
+                End If
+            Next
+            PanLauncherHide.Visibility = Visibility.Collapsed
+        Catch ex As Exception
+            Logger.Warn(ex, "解锁主题时出错")
+        End Try
     End Sub
     Public Sub Refresh()
         Try
