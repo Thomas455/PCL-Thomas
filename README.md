@@ -3,6 +3,8 @@
   修改时间：2026-10-21
 -->
 
+[![](https://img.shields.io/badge/powered_by-dsh-4D6BFE?style=flat-square&logo=deepseek&logoColor=white)](https://github.com/deepseek-ai/deepseek-harness)
+
 <p align="center">
   <sub><i>✦ 本分支由 <b>thomas455</b> 维护 · 修改过程由 <b>DeepSeek Harness</b> 协作完成 · 2026-10-21 ✦</i></sub>
 </p>
