@@ -1035,6 +1035,16 @@ Retry:
                 Throw New Exception("$登录尝试太过频繁，请等待几分钟后再试！")
             ElseIf ex.StatusCode = HttpStatusCode.Forbidden Then
                 Logger.Warn(ex, "微软登录第 4 步汇报 403")
+                '自建 Azure 应用默认不在 Mojang 的白名单内，表现为「Invalid app registration」
+                If If(ex.Response, "").Contains("Invalid app registration") Then
+                    Throw New Exception("$该应用的 Client ID 未获得 Minecraft 授权。" & vbCrLf &
+                                        "微软登录与 Xbox 认证都已成功，但 Mojang 对可以调用 Minecraft 登录接口的" & vbCrLf &
+                                        "应用设有白名单，自己新建的 Azure 应用默认不在名单内，所以最后一步被拒绝。" & vbCrLf & vbCrLf &
+                                        "解决办法：向 Mojang 提交白名单申请（英文表单）：" & vbCrLf &
+                                        "https://help.minecraft.net/hc/en-us/articles/16254801392141" & vbCrLf & vbCrLf &
+                                        "获批之前可以改用离线登录正常游戏，" & vbCrLf &
+                                        "但无法加入开启了正版验证（online-mode）的服务器。")
+                End If
                 Throw New Exception("$当前 IP 的登录尝试异常。" & vbCrLf & "如果你使用了 VPN 或加速器，请把它们关掉或更换节点后再试！")
             ElseIf ex.StatusCode = HttpStatusCode.ServiceUnavailable Then
                 Logger.Warn(ex, "微软登录第 4 步汇报 503")

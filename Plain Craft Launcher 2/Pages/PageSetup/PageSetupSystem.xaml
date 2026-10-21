@@ -183,7 +183,7 @@
                         </Grid.RowDefinitions>
                         <TextBlock VerticalAlignment="Center" HorizontalAlignment="Left" Text="微软 Client ID" Margin="0,0,25,0" />
                         <local:MyTextBox x:Name="TextSecretMsClientId" Grid.Column="1" HintText="未配置"
-                                         ToolTip="用于正版（微软账号）登录。&#xa;在 Azure 门户注册应用后获得。" />
+                                         ToolTip="用于正版（微软账号）登录。&#xa;在 Azure 门户注册应用后获得。&#xa;注意：Mojang 对可调用 Minecraft 登录接口的 Client ID 设有白名单，&#xa;自建应用需先提交申请，否则登录会在最后一步被拒绝。" />
                         <TextBlock VerticalAlignment="Center" HorizontalAlignment="Left" Text="CurseForge Key" Margin="0,0,25,0" Grid.Row="2" />
                         <local:MyTextBox x:Name="TextSecretCurseForge" Grid.Column="1" Grid.Row="2" HintText="未配置"
                                          ToolTip="用于搜索、下载 CurseForge 资源。&#xa;在 console.curseforge.com 免费申请。未配置时只会搜索 Modrinth。" />
