@@ -311,6 +311,78 @@ Friend Module ModSecret
     End Function
 
     ''' <summary>
+    ''' 一次更新检查的结果。
+    ''' </summary>
+    Private Structure UpdateInfo
+        Public Tag As String
+        Public Body As String
+        Public ExeUrl As String
+        Public PageUrl As String
+        Public FromApi As Boolean
+    End Structure
+
+    ''' <summary>
+    ''' 用 releases.atom 取最新 tag。这条路不消耗 GitHub API 的匿名配额（60 次/小时/IP），
+    ''' 用于 API 被限流或拦截时兜底。
+    ''' </summary>
+    Private Function GetLatestTagByAtom(Repo As String) As String
+        Try
+            Dim Xml As String = NetRequestByClientRetry($"https://github.com/{Repo}/releases.atom")
+            '取第一个 entry 里的 /releases/tag/xxx
+            Dim M = System.Text.RegularExpressions.Regex.Match(Xml, "/releases/tag/([^""<>/\s]+)")
+            If M.Success Then Return M.Groups(1).Value
+        Catch ex As Exception
+            Logger.Warn(ex, "通过 atom 获取最新版本号失败")
+        End Try
+        Return ""
+    End Function
+
+    ''' <summary>
+    ''' 用 expanded_assets 页面取附件的下载地址（同样不走 API）。
+    ''' </summary>
+    Private Function GetReleaseExeUrlByHtml(Repo As String, Tag As String) As String
+        Try
+            Dim Html As String = NetRequestByClientRetry($"https://github.com/{Repo}/releases/expanded_assets/{Tag}")
+            Dim M = System.Text.RegularExpressions.Regex.Match(Html, "href=""([^""]*/releases/download/[^""]+\.exe)""")
+            If M.Success Then Return "https://github.com" & M.Groups(1).Value
+        Catch ex As Exception
+            Logger.Warn(ex, "通过网页获取更新附件地址失败")
+        End Try
+        Return Nothing
+    End Function
+
+    ''' <summary>
+    ''' 获取更新信息：优先走 GitHub API，失败时退回不消耗配额的方式。
+    ''' </summary>
+    Private Function GetUpdateInfo() As UpdateInfo
+        Dim Repo As String = If(UpdateRepo, "").Trim().Trim("/"c)
+        If Repo = "" Then Throw New Exception("尚未配置更新仓库，请在【设置 → 启动器 → 凭据与更新源】中填写 ""用户名/仓库名""")
+        Try
+            Dim Release As JObject = GetLatestRelease()
+            Return New UpdateInfo With {
+                .Tag = If(Release?("tag_name")?.ToString, ""),
+                .Body = If(Release?("body")?.ToString, ""),
+                .ExeUrl = GetReleaseExeUrl(Release),
+                .PageUrl = If(Release?("html_url")?.ToString, ""),
+                .FromApi = True}
+        Catch ex As Exception
+            'API 受限（常见于共享出口 IP，匿名额度被同 IP 的其他请求用光）时改用网页方式
+            Logger.Warn(ex, "GitHub API 不可用，改用 releases.atom 检查更新")
+            Dim Tag As String = GetLatestTagByAtom(Repo)
+            If Tag = "" Then
+                Throw New Exception("检查更新失败：GitHub 接口不可用，网页方式也未能获取版本号。" & vbCrLf &
+                                    "原始错误：" & ex.Message, ex)
+            End If
+            Return New UpdateInfo With {
+                .Tag = Tag,
+                .Body = "",
+                .ExeUrl = GetReleaseExeUrlByHtml(Repo, Tag),
+                .PageUrl = $"https://github.com/{Repo}/releases/tag/{Tag}",
+                .FromApi = False}
+        End Try
+    End Function
+
+    ''' <summary>
     ''' 检查更新。更新源为本地凭据文件中配置的 GitHub 仓库。
     ''' </summary>
     Friend Sub UpdateCheckByButton()
@@ -318,8 +390,8 @@ Friend Module ModSecret
         RunInNewThread(
         Sub()
             Try
-                Dim Release As JObject = GetLatestRelease()
-                Dim Tag As String = If(Release?("tag_name")?.ToString, "").Trim()
+                Dim Info As UpdateInfo = GetUpdateInfo()
+                Dim Tag As String = Info.Tag.Trim()
                 If Tag = "" Then Throw New Exception("更新源没有返回版本号")
                 Dim NewVersion As Version = Nothing
                 If Not Version.TryParse(Tag.TrimStart("v"c, "V"c), NewVersion) Then Throw New Exception($"无法识别更新源返回的版本号：{Tag}")
@@ -328,12 +400,12 @@ Friend Module ModSecret
                     Return
                 End If
                 '整理更新说明
-                Dim BodyText As String = If(Release?("body")?.ToString, "").Trim().Replace(vbCrLf, vbLf).Replace(vbLf, vbCrLf)
+                Dim BodyText As String = Info.Body.Trim().Replace(vbCrLf, vbLf).Replace(vbLf, vbCrLf)
                 If BodyText.Length > 800 Then BodyText = BodyText.Substring(0, 800) & vbCrLf & "……"
                 Dim Message As String = $"发现新版本 {Tag}，当前版本 {VersionBaseName}。"
                 If BodyText <> "" Then Message &= vbCrLf & vbCrLf & BodyText
-                Dim ExeUrl As String = GetReleaseExeUrl(Release)
-                Dim PageUrl As String = If(Release?("html_url")?.ToString, "")
+                Dim ExeUrl As String = Info.ExeUrl
+                Dim PageUrl As String = Info.PageUrl
                 '询问用户
                 Dim Choice As Integer = 2
                 Dim Waiter As New ManualResetEventSlim(False)
