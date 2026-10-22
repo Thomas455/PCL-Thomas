@@ -398,7 +398,9 @@ Friend Module ModSecret
             Throw New Exception("尚未配置更新源，请在 Modules\ModSecretBuild.vb 或 PCL\Secret.ini 中填写" &
                                 """github:用户名/仓库名"" 或 ""gitcode:用户名/仓库名""")
         End If
-        '遍历所有源，取版本号最高的那个，避免某个镜像落后时误判为“已是最新”
+        '按配置顺序尝试：一旦某个源报告了比本地更新的版本就直接采用（顺序即优先级）；
+        '若该源看起来"没有更新"，则继续查后面的源复核，避免镜像滞后导致误判为“已是最新”
+        Dim LocalVersion As New Version(VersionBaseName)
         Dim Best As UpdateInfo = New UpdateInfo
         Dim BestVersion As Version = Nothing
         Dim HasBest As Boolean = False
@@ -417,10 +419,11 @@ Friend Module ModSecret
                     BestVersion = V
                     HasBest = True
                 End If
+                If V > LocalVersion Then Exit For '已有比本地新的版本，后面的源不用再查
             Catch ex As Exception
                 ex.ThrowIfCanceled()
                 Errors.Add($"{Src.Display}：{ex.Message}")
-                Logger.Warn(ex, $"更新源 {Src.Display} 不可用")
+                Logger.Warn(ex, $"更新源 {Src.Display} 不可用，尝试下一个")
             End Try
         Next
         If Not HasBest Then
