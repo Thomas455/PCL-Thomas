@@ -17,7 +17,7 @@
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="40" />
                         <ColumnDefinition />
-                        <ColumnDefinition Width="150" />
+                        <ColumnDefinition Width="200" />
                     </Grid.ColumnDefinitions>
                     <local:MyListItem IsHitTestVisible="False" Title="龙腾猫跃" Margin="-5,0,15,0" Info="Plain Craft Launcher 的开发者！" Grid.Row="0" Grid.Column="1" />
                     <local:MyListItem IsHitTestVisible="False" Title="HerobrineXia" Margin="-5,0,15,0" Info="Plain Craft Launcher 的协力开发者！" Grid.Row="1" Grid.Column="1" />
@@ -45,8 +45,12 @@
                     </Image>
                     <local:MyButton Text="赞助 PCL !" Grid.Column="2" Grid.Row="0" Height="35" ColorType="Highlight"
                                     local:CustomEventService.EventType="打开网页" local:CustomEventService.EventData="https://meloong.com/afd/a/LTCat" />
-                    <local:MyButton Text="个人主页" Grid.Column="2" Grid.Row="2" Height="35"
-                                    local:CustomEventService.EventType="打开网页" local:CustomEventService.EventData="https://thomas455.github.io" />
+                    <StackPanel Grid.Column="2" Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Left">
+                        <local:MyButton Text="GitHub 主页" Width="100" Height="35" Margin="0,0,8,0"
+                                        local:CustomEventService.EventType="打开网页" local:CustomEventService.EventData="https://github.com/Thomas455" />
+                        <local:MyButton Text="介绍页" Width="81" Height="35"
+                                        local:CustomEventService.EventType="打开网页" local:CustomEventService.EventData="https://thomas455.github.io/pcl-thomas/" />
+                    </StackPanel>
                     <local:MyButton Text="检查更新" Grid.Column="2" Grid.Row="3" Height="35" 
                                     x:Name="BtnAboutUpdate" />
                 </Grid>
