@@ -1,3 +1,5 @@
+[![](https://img.shields.io/badge/powered_by-dsh-4D6BFE?style=flat-square&logo=deepseek&logoColor=white)](https://github.com/deepseek-ai/deepseek-harness)
+
 # PCL（Plain Craft Launcher）代码结构解析
 
 > **对象**：本仓库（PCL Thomas455 修改版 2.99.1.0），源码基线为上游 PCL `2.99.0.0` 开源版
