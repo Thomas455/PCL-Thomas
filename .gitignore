@@ -346,3 +346,6 @@ MaskFiles/
 # 本地凭据与密钥，绝不提交
 **/PCL/Secret.ini
 Secret.ini
+
+# 本地编入程序的凭据（含真实密钥），绝不提交
+**/Modules/ModSecretBuild.vb

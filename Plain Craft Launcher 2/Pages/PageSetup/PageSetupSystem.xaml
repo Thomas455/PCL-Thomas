@@ -165,40 +165,7 @@
                 </Grid>
             </local:MyCard>
 
-            <local:MyCard Margin="0,0,0,15" Title="凭据与更新源">
-                <StackPanel Margin="25,40,25,20">
-                    <TextBlock TextWrapping="Wrap" FontSize="12.5" Margin="0,0,0,12"
-                               Text="以下三项只保存在本机的 PCL\Secret.ini 文件中，不写注册表，并已在 .gitignore 中排除，不会进入版本库。留空表示不使用对应功能。" />
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" SharedSizeGroup="Name" />
-                            <ColumnDefinition Width="1*" />
-                        </Grid.ColumnDefinitions>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="28" />
-                            <RowDefinition Height="9" />
-                            <RowDefinition Height="28" />
-                            <RowDefinition Height="9" />
-                            <RowDefinition Height="28" />
-                        </Grid.RowDefinitions>
-                        <TextBlock VerticalAlignment="Center" HorizontalAlignment="Left" Text="微软 Client ID" Margin="0,0,25,0" />
-                        <local:MyTextBox x:Name="TextSecretMsClientId" Grid.Column="1" HintText="未配置"
-                                         ToolTip="用于正版（微软账号）登录。&#xa;在 Azure 门户注册应用后获得。&#xa;注意：Mojang 对可调用 Minecraft 登录接口的 Client ID 设有白名单，&#xa;自建应用需先提交申请，否则登录会在最后一步被拒绝。" />
-                        <TextBlock VerticalAlignment="Center" HorizontalAlignment="Left" Text="CurseForge Key" Margin="0,0,25,0" Grid.Row="2" />
-                        <local:MyTextBox x:Name="TextSecretCurseForge" Grid.Column="1" Grid.Row="2" HintText="未配置"
-                                         ToolTip="用于搜索、下载 CurseForge 资源。&#xa;在 console.curseforge.com 免费申请。未配置时只会搜索 Modrinth。" />
-                        <TextBlock VerticalAlignment="Center" HorizontalAlignment="Left" Text="更新仓库" Margin="0,0,25,0" Grid.Row="4" />
-                        <local:MyTextBox x:Name="TextSecretUpdateRepo" Grid.Column="1" Grid.Row="4" HintText="用户名/仓库名"
-                                         ToolTip="检查更新所用的 GitHub 仓库，格式为“用户名/仓库名”。&#xa;该仓库的 Release 需以 2.99.1.0 这类版本号作为 tag，并上传 exe 附件才能自动安装。" />
-                    </Grid>
-                    <Grid Height="35" Margin="0,12,0,0">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" SharedSizeGroup="Button" />
-                        </Grid.ColumnDefinitions>
-                        <local:MyButton Grid.Column="0" x:Name="BtnSecretSave" MinWidth="140" Text="保存凭据" Padding="13,0" ColorType="Highlight" />
-                    </Grid>
-                </StackPanel>
-            </local:MyCard>
+            <!-- 凭据与更新源：本分支改为在编译时内置（见 Modules\ModSecretBuild.vb），此处不再提供界面 -->
 
             <!-- <local:MyCard x:Name="CardMain" Margin="0,15" Title="全局设置">
                 <StackPanel Margin="25,40,25,15">

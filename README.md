@@ -58,19 +58,15 @@ NU1104: 找不到项目 MeloongCore\Wpf\MeloongCore.Wpf.csproj
 - 解除主题的赞助 / 成就解锁限制，隐藏灰色占位与赞助遮罩
 - 自定义主题的四个滑块（色调 / 饱和度 / 亮度 / 色调渐变）重新接回渲染
 
-### 4. 本地凭据文件（新增）
+### 4. 凭据编译进程序（与官方版一致）
 
-新增 `PCL\Secret.ini`，用于存放自己的密钥，**只存本机、不进版本库**：
+密钥不再需要手动填写，而是在**编译时注入**：
 
-```ini
-MsClientId:你的微软应用 Client ID
-CurseForgeAPIKey:你的 CurseForge API Key
-UpdateRepo:Thomas455/PCL-Thomas
-```
+- 值写在 `Plain Craft Launcher 2\Modules\ModSecretBuild.vb`，该文件已被 `.gitignore` 排除，**不会进入版本库**；仓库里只提交模板 [`ModSecretBuild.vb.example`](Plain%20Craft%20Launcher%202/Modules/ModSecretBuild.vb.example)
+- 文件存在时 MSBuild 会定义 `HAS_LOCAL_SECRET` 并把它编译进程序；**不存在时工程照常编译**，只是不内置凭据
+- 优先级：环境变量（`PCL_MS_CLIENT_ID` / `PCL_CURSEFORGE_API_KEY`）> `PCL\Secret.ini` > 编译期内置值 > 内置默认值
 
-- 优先级：环境变量（`PCL_MS_CLIENT_ID` / `PCL_CURSEFORGE_API_KEY`）> `Secret.ini` > 内置默认值
-- 已加入 `.gitignore`，仓库里只提交模板 [`Secret.ini.example`](Secret.ini.example)
-- 设置页新增「凭据与更新源」卡片，可直接填写并保存
+> 官方版的做法完全相同：真值放在 GitHub Actions 的 Secrets 里，构建时由 `.github/workflows/build.yml` 的 `Replace` 步骤 `-replace` 进 `ModSecret.vb`，所以**官方发布的 exe 里同样内嵌了 Client ID 与 CurseForge Key**。本分支因为在本机构建，改用被 gitignore 的源文件等价实现。
 
 ### 5. CurseForge 优雅降级
 

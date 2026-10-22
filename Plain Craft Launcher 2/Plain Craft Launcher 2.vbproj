@@ -257,6 +257,7 @@
     <Compile Include="Modules\ModDevelop.vb" />
     <Compile Include="Modules\Minecraft\ModWatcher.vb" />
     <Compile Include="Modules\ModSecret.vb" />
+    <Compile Include="Modules\ModSecretBuild.vb" Condition="Exists('Modules\ModSecretBuild.vb')" />
     <Compile Include="Pages\PageDownload\Resource\PageResource.xaml.vb">
       <DependentUpon>PageResource.xaml</DependentUpon>
     </Compile>
@@ -951,5 +952,9 @@
     <Resource Include="Images\Heads\HerobrineXia.png" />
 
   </ItemGroup>
+  <!-- 本地凭据（已 gitignore）：文件存在时才会编译进去，并定义 HAS_LOCAL_SECRET -->
+  <PropertyGroup Condition="Exists('Modules\ModSecretBuild.vb')">
+    <DefineConstants>$(DefineConstants),HAS_LOCAL_SECRET</DefineConstants>
+  </PropertyGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.VisualBasic.targets" />
 </Project>

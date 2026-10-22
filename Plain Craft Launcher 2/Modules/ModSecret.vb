@@ -33,19 +33,28 @@ Friend Module ModSecret
 
     ''' <summary>
     ''' 从环境变量与本地凭据文件重新加载全部密钥与配置。
-    ''' 优先级：环境变量 &gt; PCL\Secret.ini &gt; 内置默认值。
+    ''' 优先级：环境变量 &gt; PCL\Secret.ini &gt; 编译期内置值（ModSecretBuild.vb）&gt; 内置默认值。
     ''' </summary>
     Friend Sub RefreshSecret()
         Try
             Dim MsId As String = Environment.GetEnvironmentVariable("PCL_MS_CLIENT_ID")
             If String.IsNullOrWhiteSpace(MsId) Then MsId = ReadIni(SecretFile, "MsClientId", "")
+#If HAS_LOCAL_SECRET Then
+            If String.IsNullOrWhiteSpace(MsId) Then MsId = ModSecretBuild.BuildMsClientId
+#End If
             OAuthClientId = NormalizeSecret(MsId)
 
             Dim CfKey As String = Environment.GetEnvironmentVariable("PCL_CURSEFORGE_API_KEY")
             If String.IsNullOrWhiteSpace(CfKey) Then CfKey = ReadIni(SecretFile, "CurseForgeAPIKey", "")
+#If HAS_LOCAL_SECRET Then
+            If String.IsNullOrWhiteSpace(CfKey) Then CfKey = ModSecretBuild.BuildCurseForgeKey
+#End If
             CurseForgeAPIKey = NormalizeSecret(CfKey)
 
             Dim Repo As String = NormalizeSecret(ReadIni(SecretFile, "UpdateRepo", ""))
+#If HAS_LOCAL_SECRET Then
+            If Repo = "" Then Repo = NormalizeSecret(ModSecretBuild.BuildUpdateRepo)
+#End If
             UpdateRepo = If(Repo = "", "Meloong-Git/PCL", Repo)
         Catch ex As Exception
             Logger.Warn(ex, "读取本地凭据失败")
