@@ -279,11 +279,9 @@ Friend Module ModSecret
     Friend IsUpdateWaitingRestart As Boolean = False
 
     ''' <summary>
-    ''' 从配置的 GitHub 仓库获取最新 Release。失败时抛出异常。
+    ''' 从 GitHub 仓库获取最新 Release。失败时抛出异常。
     ''' </summary>
-    Private Function GetLatestRelease() As JObject
-        Dim Repo As String = If(UpdateRepo, "").Trim().Trim("/"c)
-        If Repo = "" Then Throw New Exception("尚未配置更新仓库，请在【设置 → 启动器 → 凭据与更新源】中填写 ""用户名/仓库名""")
+    Private Function GetLatestRelease(Repo As String) As JObject
         Try
             Return NetRequestByClientRetry($"https://api.github.com/repos/{Repo}/releases/latest", RequireJson:=True).DeserializeJson()
         Catch ex As HttpRequestCodeException
@@ -292,7 +290,7 @@ Friend Module ModSecret
                 Case HttpStatusCode.NotFound
                     Throw New Exception($"更新源 {Repo} 还没有发布任何 Release，或者该仓库是私有的（检查更新需要公开仓库）。")
                 Case HttpStatusCode.Forbidden, CType(429, HttpStatusCode)
-                    Throw New Exception("GitHub 接口访问次数超限（匿名每小时 60 次），请稍后再试。")
+                    Throw New Exception("GitHub 接口访问次数超限（匿名每小时 60 次/IP），稍后会自动改用备用方式。")
                 Case Else
                     Throw
             End Select
@@ -352,13 +350,96 @@ Friend Module ModSecret
     End Function
 
     ''' <summary>
-    ''' 获取更新信息：优先走 GitHub API，失败时退回不消耗配额的方式。
+    ''' 一条更新源。
+    ''' </summary>
+    Private Structure UpdateSource
+        Public Platform As String 'github / gitcode
+        Public Repo As String
+        Public ReadOnly Property Display As String
+            Get
+                Return $"{Platform}:{Repo}"
+            End Get
+        End Property
+    End Structure
+
+    ''' <summary>
+    ''' 解析 UpdateRepo 配置。支持多条，用 ; 或 , 分隔：
+    ''' "github:Thomas455/PCL-Thomas;gitcode:Thomas455/PCL-Thomas"
+    ''' 不带前缀时默认按 GitHub 处理（兼容旧配置）。
+    ''' </summary>
+    Private Function ParseUpdateSources() As List(Of UpdateSource)
+        Dim Result As New List(Of UpdateSource)
+        For Each Raw As String In If(UpdateRepo, "").Split({";"c, ","c}, StringSplitOptions.RemoveEmptyEntries)
+            Dim S As String = Raw.Trim()
+            If S = "" Then Continue For
+            Dim Platform As String = "github"
+            Dim Repo As String = S
+            Dim Idx As Integer = S.IndexOf(":"c)
+            If Idx > 0 Then
+                Platform = S.Substring(0, Idx).Trim().ToLowerInvariant()
+                Repo = S.Substring(Idx + 1).Trim()
+            End If
+            If Platform <> "github" AndAlso Platform <> "gitcode" Then
+                Logger.Warn($"忽略未知的更新源平台：{Platform}（仅支持 github / gitcode）")
+                Continue For
+            End If
+            Repo = Repo.Trim("/"c)
+            If Repo <> "" Then Result.Add(New UpdateSource With {.Platform = Platform, .Repo = Repo})
+        Next
+        Return Result
+    End Function
+
+    ''' <summary>
+    ''' 获取更新信息：按配置顺序依次尝试各更新源，第一个成功的胜出。
     ''' </summary>
     Private Function GetUpdateInfo() As UpdateInfo
-        Dim Repo As String = If(UpdateRepo, "").Trim().Trim("/"c)
-        If Repo = "" Then Throw New Exception("尚未配置更新仓库，请在【设置 → 启动器 → 凭据与更新源】中填写 ""用户名/仓库名""")
+        Dim Sources As List(Of UpdateSource) = ParseUpdateSources()
+        If Sources.Count = 0 Then
+            Throw New Exception("尚未配置更新源，请在 Modules\ModSecretBuild.vb 或 PCL\Secret.ini 中填写" &
+                                """github:用户名/仓库名"" 或 ""gitcode:用户名/仓库名""")
+        End If
+        '遍历所有源，取版本号最高的那个，避免某个镜像落后时误判为“已是最新”
+        Dim Best As UpdateInfo = New UpdateInfo
+        Dim BestVersion As Version = Nothing
+        Dim HasBest As Boolean = False
+        Dim Errors As New List(Of String)
+        For Each Src In Sources
+            Try
+                Dim Info As UpdateInfo = GetUpdateInfoFrom(Src)
+                Dim V As Version = Nothing
+                If Not Version.TryParse(If(Info.Tag, "").Trim().TrimStart("v"c, "V"c), V) Then
+                    Errors.Add($"{Src.Display}：无法解析版本号（{Info.Tag}）")
+                    Continue For
+                End If
+                Logger.Info($"更新源 {Src.Display} 报告版本 {V}")
+                If Not HasBest OrElse V > BestVersion Then
+                    Best = Info
+                    BestVersion = V
+                    HasBest = True
+                End If
+            Catch ex As Exception
+                ex.ThrowIfCanceled()
+                Errors.Add($"{Src.Display}：{ex.Message}")
+                Logger.Warn(ex, $"更新源 {Src.Display} 不可用")
+            End Try
+        Next
+        If Not HasBest Then
+            Throw New Exception("所有更新源都不可用：" & vbCrLf & String.Join(vbCrLf, Errors))
+        End If
+        Return Best
+    End Function
+
+    Private Function GetUpdateInfoFrom(Src As UpdateSource) As UpdateInfo
+        If Src.Platform = "gitcode" Then Return GetUpdateInfoFromGitCode(Src.Repo)
+        Return GetUpdateInfoFromGitHub(Src.Repo)
+    End Function
+
+    ''' <summary>
+    ''' GitHub：先 API，被限流时退回 releases.atom（不消耗 API 配额）。
+    ''' </summary>
+    Private Function GetUpdateInfoFromGitHub(Repo As String) As UpdateInfo
         Try
-            Dim Release As JObject = GetLatestRelease()
+            Dim Release As JObject = GetLatestRelease(Repo)
             Return New UpdateInfo With {
                 .Tag = If(Release?("tag_name")?.ToString, ""),
                 .Body = If(Release?("body")?.ToString, ""),
@@ -366,12 +447,12 @@ Friend Module ModSecret
                 .PageUrl = If(Release?("html_url")?.ToString, ""),
                 .FromApi = True}
         Catch ex As Exception
+            ex.ThrowIfCanceled()
             'API 受限（常见于共享出口 IP，匿名额度被同 IP 的其他请求用光）时改用网页方式
             Logger.Warn(ex, "GitHub API 不可用，改用 releases.atom 检查更新")
             Dim Tag As String = GetLatestTagByAtom(Repo)
             If Tag = "" Then
-                Throw New Exception("检查更新失败：GitHub 接口不可用，网页方式也未能获取版本号。" & vbCrLf &
-                                    "原始错误：" & ex.Message, ex)
+                Throw New Exception("GitHub 接口与网页方式都未能获取版本号。原始错误：" & ex.Message, ex)
             End If
             Return New UpdateInfo With {
                 .Tag = Tag,
@@ -380,6 +461,27 @@ Friend Module ModSecret
                 .PageUrl = $"https://github.com/{Repo}/releases/tag/{Tag}",
                 .FromApi = False}
         End Try
+    End Function
+
+    ''' <summary>
+    ''' GitCode：用 /api/v5/repos/{owner}/{repo}/releases 列表（公共仓库无需 token，
+    ''' 限额 400 次/分钟），取 created_at 最新的一条。
+    ''' </summary>
+    Private Function GetUpdateInfoFromGitCode(Repo As String) As UpdateInfo
+        Dim Json As JArray = CType(NetRequestByClientRetry(
+            $"https://api.gitcode.com/api/v5/repos/{Repo}/releases", RequireJson:=True).DeserializeJson(), JArray)
+        If Json Is Nothing OrElse Json.Count = 0 Then
+            Throw New Exception($"GitCode 仓库 {Repo} 还没有发布任何 Release")
+        End If
+        Dim Release As JObject = Json.Cast(Of JObject)().
+            OrderByDescending(Function(j) If(j?("created_at")?.ToString, "")).First()
+        Dim Tag As String = If(Release?("tag_name")?.ToString, "")
+        Return New UpdateInfo With {
+            .Tag = Tag,
+            .Body = If(Release?("body")?.ToString, ""),
+            .ExeUrl = GetReleaseExeUrl(Release),
+            .PageUrl = $"https://gitcode.com/{Repo}/releases/tag/{Tag}",
+            .FromApi = True}
     End Function
 
     ''' <summary>
@@ -497,12 +599,28 @@ Friend Module ModSecret
     ''' </summary>
     Friend Sub DownloadLatestPCL(Optional LoaderToSyncProgress As LoaderBase = Nothing)
         Try
-            Dim Release As JObject = GetLatestRelease()
-            Dim ExeUrl As String = GetReleaseExeUrl(Release)
-            If String.IsNullOrEmpty(ExeUrl) Then Throw New Exception("更新仓库的最新 Release 中没有提供 exe 附件")
+            '按配置顺序找一个提供了 exe 附件的更新源
+            Dim ExeUrl As String = Nothing
+            Dim LastEx As Exception = Nothing
+            For Each Src In ParseUpdateSources()
+                Try
+                    Dim Info As UpdateInfo = GetUpdateInfoFrom(Src)
+                    If Not String.IsNullOrEmpty(Info.ExeUrl) Then
+                        ExeUrl = Info.ExeUrl
+                        Exit For
+                    End If
+                Catch ex As Exception
+                    ex.ThrowIfCanceled()
+                    LastEx = ex
+                    Logger.Warn(ex, $"更新源 {Src.Display} 不可用")
+                End Try
+            Next
+            If String.IsNullOrEmpty(ExeUrl) Then
+                Throw New Exception("所有更新源都没有提供 exe 附件" & If(LastEx Is Nothing, "", "：" & LastEx.Message), LastEx)
+            End If
             NetDownloadByLoader(ExeUrl, PathTemp & "Latest.exe", LoaderToSyncProgress, SimulateBrowserHeaders:=True)
         Catch ex As Exception
-            Throw New Exception("下载最新的 PCL 正式版失败，请检查【设置 → 启动器 → 凭据与更新源】中的更新仓库配置", ex)
+            Throw New Exception("下载最新的 PCL 正式版失败，请检查 Modules\ModSecretBuild.vb 或 PCL\Secret.ini 中的更新源配置", ex)
         End Try
     End Sub
 

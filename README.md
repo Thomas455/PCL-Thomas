@@ -72,14 +72,19 @@ NU1104: 找不到项目 MeloongCore\Wpf\MeloongCore.Wpf.csproj
 
 未配置 API Key 时，资源搜索自动只用 Modrinth 源并提示一次，不再撞 403；配置后 CurseForge 搜索 / 下载 / 整合包全部可用。
 
-### 6. 检查更新改为自建仓库
+### 6. 检查更新改为自建多源
 
-上游的更新走官方签名 CDN。本分支改为查询自己 GitHub 仓库的 Release：
+上游的更新走官方签名 CDN。本分支改为查询自己的仓库，并支持**多个源互为备份**：
 
-- 以 Release 的 `tag_name` 作为版本号，与程序内 `VersionBaseName` 比较
-- 有 exe 附件时：下载 → 通过 `--update` 协议等待旧进程退出 → 覆盖 → 重启
-- 无附件时：跳转 Release 页面
-- 整合包导出用的「下载最新版 PCL」也改用该仓库
+- 配置格式（`ModSecretBuild.vb` 的 `BuildUpdateRepo`，或 `PCL\Secret.ini` 的 `UpdateRepo`）：
+  `github:用户名/仓库名;gitcode:用户名/仓库名`，用 `;` 或 `,` 分隔；不带前缀按 GitHub 处理
+- **GitHub**：`/repos/{owner}/{repo}/releases/latest`；被匿名限额（60 次/小时 **每 IP**）挡住时，
+  自动退回 `releases.atom` 网页方式（不消耗 API 配额）
+- **GitCode**：`api.gitcode.com/api/v5/repos/{owner}/{repo}/releases`，公共仓库无需 token，
+  限额约 400 次/分钟，国内可直连
+- 程序取**所有源里版本号最高的那个**，避免某个镜像更新滞后时误判为「已是最新」
+- 有 exe 附件时：下载 → `--update` 协议等待旧进程退出 → 覆盖 → 重启；无附件则跳转 Release 页面
+- 整合包导出用的「下载最新版 PCL」也按同样的多源顺序查找
 
 ### 7. 其他
 
