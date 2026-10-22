@@ -189,7 +189,7 @@
                                          ToolTip="用于搜索、下载 CurseForge 资源。&#xa;在 console.curseforge.com 免费申请。未配置时只会搜索 Modrinth。" />
                         <TextBlock VerticalAlignment="Center" HorizontalAlignment="Left" Text="更新仓库" Margin="0,0,25,0" Grid.Row="4" />
                         <local:MyTextBox x:Name="TextSecretUpdateRepo" Grid.Column="1" Grid.Row="4" HintText="用户名/仓库名"
-                                         ToolTip="检查更新所用的 GitHub 仓库，格式为“用户名/仓库名”。&#xa;该仓库的 Release 需以 2.99.0.0 这类版本号作为 tag，并上传 exe 附件才能自动安装。" />
+                                         ToolTip="检查更新所用的 GitHub 仓库，格式为“用户名/仓库名”。&#xa;该仓库的 Release 需以 2.99.1.0 这类版本号作为 tag，并上传 exe 附件才能自动安装。" />
                     </Grid>
                     <Grid Height="35" Margin="0,12,0,0">
                         <Grid.ColumnDefinitions>

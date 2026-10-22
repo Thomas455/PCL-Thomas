@@ -88,7 +88,9 @@ UpdateRepo:Thomas455/PCL-Thomas
 ### 7. 其他
 
 - 移除每次启动弹出的「开源版本说明」对话框
+- 移除「更多 → 百宝箱」入口（上游源码里本就没有实现，点进去只会提示“开源内容中不包含百宝箱功能”）
 - 正版登录的 403 错误改为准确提示（区分「未获 Minecraft 白名单授权」与网络问题）
+- 关于页加入修改者署名与入口：thomas455 一行带 GitHub 主页、介绍页按钮
 
 ## 正版登录的已知限制
 
@@ -108,7 +110,7 @@ UpdateRepo:Thomas455/PCL-Thomas
 
 | 功能 | 原因 |
 |---|---|
-| 百宝箱 | 上游已删除整个页面源码 |
+| 百宝箱 | 本版已移除该入口；上游源码里本来就只有一句“不包含该功能”的占位 |
 | 联机（EasyTier） | 依赖官方服务器下发的签名配置 |
 | 启动器公告 / 联网通知 | 同上，官方自建服务 |
 | 正版登录 | 见上节，需 Mojang 白名单 |
@@ -137,6 +139,18 @@ msbuild "Plain Craft Launcher 2\Plain Craft Launcher 2.vbproj" -p:Configuration=
 - **PCL 原作者：龙腾猫跃**（[GitHub](https://github.com/LTCat) / [赞助](https://meloong.com/afd/a/LTCat)）—— 本项目的全部基础工作都属于他
 - 下载镜像源：[bangbang93](https://github.com/bangbang93)（BMCLAPI）
 - 第三方组件版权见程序「关于」页面中的《许可与版权声明》
+
+## 版本记录
+
+- **2.99.1.0**（当前版本）
+  - 恢复 Minecraft 游戏下载与整合包安装
+  - 恢复主题个性化：补回配色映射、解除解锁限制
+  - 新增本地凭据文件 `PCL\Secret.ini`，设置页可直接填写
+  - CurseForge 未配置 Key 时自动降级到 Modrinth，不再报 403
+  - 检查更新改为查询本仓库的 Release，支持下载替换与重启
+  - 程序名改为「Plain Craft Launcher · Thomas455 修改版」，关于页加入修改者署名与入口
+  - 移除「更多 → 百宝箱」入口
+- **2.99.0.0**：上游基线，本分支在此基础上修改
 
 ## 许可
 
